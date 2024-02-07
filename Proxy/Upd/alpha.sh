@@ -102,13 +102,13 @@ if [ $size = $filesize ]; then
   chmod 755 /tmp/clash
   mv /tmp/clash $dir/clash
   t=`$dir/clash -v | awk -F ' ' '/alpha/ {split($3, t, "-"); print t[2]}'`
-#  echo $version > $dir/.clash-meta-version
+#  echo -n $version > $dir/.clash-meta-version
 #  echo 更新完成了喵
 #  exit 0
 #如果指定架构,把上面三句取消注释
 #并把下面if
   if [ $t = $version ]; then
-    echo $version > $dir/.clash-meta-version
+    echo -n $version > $dir/.clash-meta-version
     echo 更新完成了喵
     exit 0
   else
