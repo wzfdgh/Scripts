@@ -3,7 +3,7 @@
 
 dir=$(cd `dirname $0`; pwd)
 api=https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest
-version=$(curl -s $api | awk -F '"' '/body/ {split($4, v, "-" ); print v[2]}')
+version=$(curl -s $api | awk -F '"' '/body/ {split($4, v, "-"); print v[2]}')
 #获取脚本路径及最新版本
 
 checkbak() {
