@@ -16,7 +16,7 @@ fi
 
 web() {
 echo "Web管理页增加数据"
-if [ `grep "turbostat --quiet -s PkgWatt -i 0.01 -n 1" $pm |wc -l` -gt 0 ];then
+if [ `grep "cpu_tdp" $js |wc -l` -gt 0 ];then
   cat << EOF > /tmp/js
 	{
 	    itemId: 'cputdp',
