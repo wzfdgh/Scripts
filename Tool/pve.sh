@@ -7,7 +7,7 @@ pjs='/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js'
 
 sub() {
 echo "去除订阅提示"
-if [ `grep "data.status.toLowerCase() !== 'active'" $pjs|wc -l` -gt 0 ];then
+if [ `grep "data.status.toLowerCase() !== 'active'" $pjs |wc -l` -gt 0 ];then
   sed -i "s/data.status.toLowerCase() !== 'active'/false/g" $pjs
 else
   echo "无需更改"
@@ -16,7 +16,7 @@ fi
 
 web() {
 echo "Web管理页增加数据"
-if [ `grep "cpu_tdp" $js |wc -l` -gt 0 ];then
+if [ `grep "cpu_tdp" $pm |wc -l` -eq 0 ];then
   cat << EOF > /tmp/js
 	{
 	    itemId: 'cputdp',
