@@ -110,9 +110,9 @@ fi
 }
 
 grub() {
-if [ `grep 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub |wc -l` -gt 0 ];then
+if [ `grep 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt textonly nomodeset nofb video=vesafb:off video=efifb:off video=simplefb:off intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub |wc -l` -gt 0 ];then
   l=`sed -n "/GRUB_CMDLINE_LINUX_DEFAULT/=" /etc/default/grub`
-  sed -i ''$l'c GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub
+  sed -i ''$l'c GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt textonly nomodeset nofb video=vesafb:off video=efifb:off video=simplefb:off intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub
 else
   echo "无需更改"
 fi
