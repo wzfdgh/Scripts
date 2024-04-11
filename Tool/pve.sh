@@ -3,18 +3,17 @@
 js='/usr/share/pve-manager/js/pvemanagerlib.js'
 pm='/usr/share/perl5/PVE/API2/Nodes.pm'
 pjs='/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js'
+apm='/usr/share/perl5/PVE/APLInfo.pm'
 
 #ivanhao/pvetools
-sub() {
+web() {
 echo "去除订阅提示"
 if [ `grep "data.status.toLowerCase() !== 'active'" $pjs |wc -l` -gt 0 ];then
   sed -i "s/data.status.toLowerCase() !== 'active'/false/g" $pjs
 else
   echo "无需更改"
 fi
-}
 
-web() {
 echo "Web管理页增加数据"
 if [ `grep "cpu_tdp" $pm |wc -l` -eq 0 ];then
   cat << EOF > /tmp/js
@@ -60,6 +59,8 @@ EOF
   h=`grep -3 'widget.pveNodeStatus' $js |awk -F': ' '/height/ {print $2}' |sed 's/.$//g'`
   let t=$h+50
   sed -i ''$l'c \ \ \ \ height:\ '$t',' $js
+
+  systemctl restart pveproxy
 else
   echo "无需更改"
 fi
@@ -67,7 +68,7 @@ fi
 
 as() {
 echo "sources.list"
-if [ `grep "https://mirrors.bfsu.edu.cn/debian/" /etc/apt/sources.list |wc -l` -gt 0 ];then
+if [ `grep "https://mirrors.bfsu.edu.cn/debian/" /etc/apt/sources.list |wc -l` -eq 0 ];then
   cat << EOF > /etc/apt/sources.list
 deb https://mirrors.bfsu.edu.cn/debian/ bookworm main contrib non-free non-free-firmware
 # deb-src https://mirrors.bfsu.edu.cn/debian/ bookworm main contrib non-free non-free-firmware
@@ -84,7 +85,7 @@ else
 fi
 
 echo "ceph.list"
-if [ `grep "https://mirrors.ustc.edu.cn/proxmox/debian/ceph-quincy" /etc/apt/sources.list.d/ceph.list|wc -l` -gt 0 ];then
+if [ `grep "https://mirrors.ustc.edu.cn/proxmox/debian/ceph-quincy" /etc/apt/sources.list.d/ceph.list |wc -l` -eq 0 ];then
   cat << EOF > /etc/apt/sources.list.d/ceph.list
 deb https://mirrors.ustc.edu.cn/proxmox/debian/ceph-quincy bookworm no-subscription
 EOF
@@ -94,7 +95,7 @@ else
 fi
 
 echo "pve-no-subscription.list"
-if [ `grep "https://mirrors.bfsu.edu.cn/proxmox/debian/pve" /etc/apt/sources.list.d/pve-no-subscription.list |wc -l` -gt 0];then
+if [ `grep "https://mirrors.bfsu.edu.cn/proxmox/debian/pve" /etc/apt/sources.list.d/pve-no-subscription.list |wc -l` -eq 0];then
   cat << EOF > /etc/apt/sources.list.d/pve-no-subscription.list
 deb https://mirrors.bfsu.edu.cn/proxmox/debian/pve bookworm pve-no-subscription
 EOF
@@ -110,14 +111,21 @@ fi
 }
 
 ct() {
-sed -i 's|http://download.proxmox.com|https://mirrors.bfsu.edu.cn/proxmox|g' /usr/share/perl5/PVE/APLInfo.pm
+echo "更改 CT 镜像源"
+if [ `grep "https://mirrors.bfsu.edu.cn/proxmox" $apm |wc -l` -eq 0 ];then
+  sed -i 's|http://download.proxmox.com|https://mirrors.bfsu.edu.cn/proxmox|g' $apm
+  systemctl restart pvedaemon
+else
+  echo "无需更改"
+fi
 }
 
 grub() {
+echo "更改grub"
 if [ `grep 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_guc=3 i915.max_vfs=7 intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub |wc -l` -gt 0 ];then
   l=`sed -n "/GRUB_CMDLINE_LINUX_DEFAULT/=" /etc/default/grub`
   sed -i ''$l'c GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_guc=3 i915.max_vfs=7 intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub
-  #https://www.intel.cn/content/www/cn/zh/support/articles/000093216/graphics/processor-graphics.html?elq_cid=8525851_ts1675160232856&erpm_id=11058087_ts1675160232856
+  #https://www.intel.cn/content/www/cn/zh/support/articles/000093216/graphics/processor-graphics.html
   #i915.enable_gvt=1
 else
   echo "无需更改"
@@ -232,7 +240,5 @@ sleep 2
 msg_ok "Finished"
 }
 
-sub
 web
 ct
-systemctl restart pveproxy
