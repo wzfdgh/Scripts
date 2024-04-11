@@ -1,10 +1,10 @@
 #!/bin/bash
-#ivanhao/pvetools
 
 js='/usr/share/pve-manager/js/pvemanagerlib.js'
 pm='/usr/share/perl5/PVE/API2/Nodes.pm'
 pjs='/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js'
 
+#ivanhao/pvetools
 sub() {
 echo "去除订阅提示"
 if [ `grep "data.status.toLowerCase() !== 'active'" $pjs |wc -l` -gt 0 ];then
@@ -110,12 +110,122 @@ fi
 }
 
 grub() {
-if [ `grep 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_gvt=1 intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub |wc -l` -gt 0 ];then
+if [ `grep 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_guc=3 i915.max_vfs=7 intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub |wc -l` -gt 0 ];then
   l=`sed -n "/GRUB_CMDLINE_LINUX_DEFAULT/=" /etc/default/grub`
-  sed -i ''$l'c GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_gvt=1 intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub
+  sed -i ''$l'c GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_guc=3 i915.max_vfs=7 intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub
+  #https://www.intel.cn/content/www/cn/zh/support/articles/000093216/graphics/processor-graphics.html?elq_cid=8525851_ts1675160232856&erpm_id=11058087_ts1675160232856
+  #i915.enable_gvt=1
 else
   echo "无需更改"
 fi
+}
+
+vgpu() {
+apt update && apt install git mokutil dkms pve-headers-$(uname -r) sysfsutils -y
+rm -rf /var/lib/dkms/i915-sriov-dkms*
+rm -rf /usr/src/i915-sriov-dkms*
+rm -rf ~/i915-sriov-dkms
+KERNEL=$(uname -r); KERNEL=${KERNEL%-pve}
+cd ~
+git clone https://github.com/strongtz/i915-sriov-dkms.git
+cd ~/i915-sriov-dkms
+#cp -a ~/i915-sriov-dkms/dkms.conf{,.bak}
+sed -i 's/"@_PKGBASE@"/"i915-sriov-dkms"/g' ~/i915-sriov-dkms/dkms.conf
+sed -i 's/"@PKGVER@"/"'"$KERNEL"'"/g' ~/i915-sriov-dkms/dkms.conf
+sed -i 's/ -j$(nproc)//g' ~/i915-sriov-dkms/dkms.conf
+cat ~/i915-sriov-dkms/dkms.conf
+#issue-151
+if [ "$KERNEL" = "6.5.13-5" ]; then
+#  mv ./drivers/gpu/drm/i915/display/intel_dp_mst.c ./drivers/gpu/drm/i915/display/intel_dp_mst.c.bak
+  wget https://raw.githubusercontent.com/makazeu/i915-sriov-dkms/ffc23727f106995d89bc7ad32df4f1a3809ee737/drivers/gpu/drm/i915/display/intel_dp_mst.c -O ./drivers/gpu/drm/i915/display/intel_dp_mst.c
+fi
+dkms add .
+dkms install -m i915-sriov-dkms -v $KERNEL -k $(uname -r) --force
+dkms status
+cd /usr/src/i915-sriov-dkms-$KERNEL
+dkms status
+grub
+update-grub
+update-initramfs -u -k all
+echo "devices/pci0000:00/0000:00:02.0/sriov_numvfs = 3" > /etc/sysfs.conf
+#proxmox-boot-tool kernel pin $(uname -r)
+#proxmox-boot-tool kernel unpin
+}
+
+kernel() {
+# Copyright (c) 2021-2024 tteck
+# Author: tteck (tteckster)
+# License: MIT
+# https://github.com/tteck/Proxmox/raw/main/LICENSE
+
+function header_info {
+  clear
+  cat <<"EOF"
+    __ __                     __   ________
+   / //_/__  _________  ___  / /  / ____/ /__  ____ _____
+  / ,< / _ \/ ___/ __ \/ _ \/ /  / /   / / _ \/ __ `/ __ \
+ / /| /  __/ /  / / / /  __/ /  / /___/ /  __/ /_/ / / / /
+/_/ |_\___/_/  /_/ /_/\___/_/   \____/_/\___/\__,_/_/ /_/
+
+EOF
+}
+YW=$(echo "\033[33m")
+RD=$(echo "\033[01;31m")
+GN=$(echo "\033[1;92m")
+CL=$(echo "\033[m")
+BFR="\\r\\033[K"
+HOLD="-"
+CM="${GN}✓${CL}"
+current_kernel=$(uname -r)
+available_kernels=$(dpkg --list | grep 'kernel-.*-pve' | awk '{print $2}' | grep -v "$current_kernel" | sort -V)
+header_info
+
+function msg_info() {
+  local msg="$1"
+  echo -ne " ${HOLD} ${YW}${msg}..."
+}
+
+function msg_ok() {
+  local msg="$1"
+  echo -e "${BFR} ${CM} ${GN}${msg}${CL}"
+}
+
+whiptail --backtitle "Proxmox VE Helper Scripts" --title "Proxmox VE Kernel Clean" --yesno "This will Clean Unused Kernel Images, USE AT YOUR OWN RISK. Proceed?" 10 68 || exit
+if [ -z "$available_kernels" ]; then
+  whiptail --backtitle "Proxmox VE Helper Scripts" --title "No Old Kernels" --msgbox "It appears there are no old Kernels on your system. \nCurrent kernel ($current_kernel)." 10 68
+  echo "Exiting..."
+  sleep 2
+  clear
+  exit
+fi
+  KERNEL_MENU=()
+  MSG_MAX_LENGTH=0
+while read -r TAG ITEM; do
+  OFFSET=2
+  ((${#ITEM} + OFFSET > MSG_MAX_LENGTH)) && MSG_MAX_LENGTH=${#ITEM}+OFFSET
+  KERNEL_MENU+=("$TAG" "$ITEM " "OFF")
+done < <(echo "$available_kernels")
+
+remove_kernels=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "Current Kernel $current_kernel" --checklist "\nSelect Kernels to remove:\n" 16 $((MSG_MAX_LENGTH + 58)) 6 "${KERNEL_MENU[@]}" 3>&1 1>&2 2>&3 | tr -d '"') || exit
+[ -z "$remove_kernels" ] && {
+  whiptail --backtitle "Proxmox VE Helper Scripts" --title "No Kernel Selected" --msgbox "It appears that no Kernel was selected" 10 68
+  echo "Exiting..."
+  sleep 2
+  clear
+  exit
+}
+whiptail --backtitle "Proxmox VE Helper Scripts" --title "Remove Kernels" --yesno "Would you like to remove the $(echo $remove_kernels | awk '{print NF}') previously selected Kernels?" 10 68 || exit
+
+msg_info "Removing ${CL}${RD}$(echo $remove_kernels | awk '{print NF}') ${CL}${YW}old Kernels${CL}"
+/usr/bin/apt purge -y $remove_kernels >/dev/null 2>&1
+msg_ok "Successfully Removed Kernels"
+
+msg_info "Updating GRUB"
+/usr/sbin/update-grub >/dev/null 2>&1
+msg_ok "Successfully Updated GRUB"
+msg_info "Exiting"
+sleep 2
+msg_ok "Finished"
 }
 
 sub
