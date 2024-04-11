@@ -109,6 +109,10 @@ if [ -f /etc/apt/sources.list.d/pve-subscription.list ];then
 fi
 }
 
+ct() {
+sed -i 's|http://download.proxmox.com|https://mirrors.bfsu.edu.cn/proxmox|g' /usr/share/perl5/PVE/APLInfo.pm
+}
+
 grub() {
 if [ `grep 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_guc=3 i915.max_vfs=7 intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub |wc -l` -gt 0 ];then
   l=`sed -n "/GRUB_CMDLINE_LINUX_DEFAULT/=" /etc/default/grub`
@@ -230,4 +234,5 @@ msg_ok "Finished"
 
 sub
 web
+ct
 systemctl restart pveproxy
