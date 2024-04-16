@@ -4,6 +4,7 @@ js='/usr/share/pve-manager/js/pvemanagerlib.js'
 pm='/usr/share/perl5/PVE/API2/Nodes.pm'
 pjs='/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js'
 apm='/usr/share/perl5/PVE/APLInfo.pm'
+rc='/etc/rc.local'
 
 #ivanhao/pvetools
 web() {
@@ -11,7 +12,7 @@ echo "去除订阅提示"
 if [ `grep "data.status.toLowerCase() !== 'active'" $pjs |wc -l` -gt 0 ];then
   sed -i "s/data.status.toLowerCase() !== 'active'/false/g" $pjs
 else
-  echo "无需更改"
+  echo "无需去除"
 fi
 
 echo "Web管理页增加数据"
@@ -60,9 +61,17 @@ EOF
   let t=$h+50
   sed -i ''$l'c \ \ \ \ height:\ '$t',' $js
 
+  chmod +s /usr/sbin/turbostat
+  echo "添加开机启动项"
+  if [ `grep "chmod +s /usr/sbin/turbostat" $rc |wc -l` -eq 0 ];then
+    l=`sed -n "/exit 0/=" $rc`
+    sed -i ''$l'i chmod +s /usr/sbin/turbostat' $rc
+  else
+    echo "无需添加"
+  fi
   systemctl restart pveproxy
 else
-  echo "无需更改"
+  echo "无需增加"
 fi
 }
 
@@ -238,6 +247,33 @@ msg_ok "Successfully Updated GRUB"
 msg_info "Exiting"
 sleep 2
 msg_ok "Finished"
+}
+
+rclocal() {
+echo "启用 rc.local"
+if [ -e "$rc" ];then
+  echo "无需更改"
+else
+  cat << EOF > /etc/rc.local
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+exit 0
+EOF
+
+  chmod +x /etc/rc.local
+  systemctl start rc-local
+fi
 }
 
 web
