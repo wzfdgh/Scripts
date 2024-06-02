@@ -16,6 +16,8 @@ else
 fi
 
 echo "Web管理页增加数据"
+as
+apt update && apt upgrade -y && apt install linux-cpupower lm-sensors -y
 if [ `grep "cpu_tdp" $pm |wc -l` -eq 0 ];then
   cat << EOF > /tmp/js
 	{
@@ -63,6 +65,7 @@ EOF
 
   chmod +s /usr/sbin/turbostat
   echo "添加开机启动项"
+  rclocal
   if [ `grep "chmod +s /usr/sbin/turbostat" $rc |wc -l` -eq 0 ];then
     l=`sed -n "/exit 0/=" $rc`
     sed -i ''$l'i chmod +s /usr/sbin/turbostat' $rc
@@ -104,7 +107,7 @@ else
 fi
 
 echo "pve-no-subscription.list"
-if [ `grep "https://mirrors.bfsu.edu.cn/proxmox/debian/pve" /etc/apt/sources.list.d/pve-no-subscription.list |wc -l` -eq 0];then
+if [ `grep "https://mirrors.bfsu.edu.cn/proxmox/debian/pve" /etc/apt/sources.list.d/pve-no-subscription.list |wc -l` -eq 0 ];then
   cat << EOF > /etc/apt/sources.list.d/pve-no-subscription.list
 deb https://mirrors.bfsu.edu.cn/proxmox/debian/pve bookworm pve-no-subscription
 EOF
@@ -113,10 +116,15 @@ else
   echo "无需更改"
 fi
 
-if [ -f /etc/apt/sources.list.d/pve-subscription.list ];then
-  rm /etc/apt/sources.list.d/pve-subscription.list
+if [ -f /etc/apt/sources.list.d/pve-enterprise.list ];then
+  rm /etc/apt/sources.list.d/pve-enterprise.list
   echo "已删除企业源"
 fi
+}
+
+apt() {
+echo "补充软件包"
+apt install ntfs-3g libgl1 libegl1 -y
 }
 
 ct() {
@@ -142,6 +150,8 @@ fi
 }
 
 vgpu() {
+#apt install proxmox-kernel-6.5 proxmox-kernel-6.5.13-5-pve-signed pve-headers-6.5.13-5-pve -y
+#proxmox-boot-tool kernel pin 6.5.13-5-pve
 apt update && apt install git mokutil dkms pve-headers-$(uname -r) sysfsutils -y
 rm -rf /var/lib/dkms/i915-sriov-dkms*
 rm -rf /usr/src/i915-sriov-dkms*
@@ -274,6 +284,13 @@ EOF
   chmod +x /etc/rc.local
   systemctl start rc-local
 fi
+}
+
+lr() {
+echo "删除 local-lvm"
+lvremove pve/data
+lvextend -l +100%FREE -r pve/root
+echo "请在 web 删除 local-lvm 储存 并编辑 local 的内容"
 }
 
 web
