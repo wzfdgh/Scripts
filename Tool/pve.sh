@@ -125,6 +125,13 @@ fi
 apt() {
 echo "补充软件包"
 apt install ntfs-3g libgl1 libegl1 -y
+apt install apcupsd
+}
+
+nupst() {
+echo "配置 Network UPS Tool
+apt install nut nut-cgi -y
+
 }
 
 ct() {
