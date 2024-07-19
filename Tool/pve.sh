@@ -157,37 +157,19 @@ fi
 }
 
 vgpu() {
-#apt install proxmox-kernel-6.5 proxmox-kernel-6.5.13-5-pve-signed pve-headers-6.5.13-5-pve -y
-#proxmox-boot-tool kernel pin 6.5.13-5-pve
-apt update && apt install git mokutil dkms pve-headers-$(uname -r) sysfsutils -y
+apt update && apt install git build-* dkms sysfsutils -y
 rm -rf /var/lib/dkms/i915-sriov-dkms*
 rm -rf /usr/src/i915-sriov-dkms*
 rm -rf ~/i915-sriov-dkms
-KERNEL=$(uname -r); KERNEL=${KERNEL%-pve}
 cd ~
 git clone https://github.com/strongtz/i915-sriov-dkms.git
 cd ~/i915-sriov-dkms
-#cp -a ~/i915-sriov-dkms/dkms.conf{,.bak}
-sed -i 's/"@_PKGBASE@"/"i915-sriov-dkms"/g' ~/i915-sriov-dkms/dkms.conf
-sed -i 's/"@PKGVER@"/"'"$KERNEL"'"/g' ~/i915-sriov-dkms/dkms.conf
-sed -i 's/ -j$(nproc)//g' ~/i915-sriov-dkms/dkms.conf
-cat ~/i915-sriov-dkms/dkms.conf
-#issue-151
-if [ "$KERNEL" = "6.5.13-5" ]; then
-#  mv ./drivers/gpu/drm/i915/display/intel_dp_mst.c ./drivers/gpu/drm/i915/display/intel_dp_mst.c.bak
-  wget https://raw.githubusercontent.com/makazeu/i915-sriov-dkms/ffc23727f106995d89bc7ad32df4f1a3809ee737/drivers/gpu/drm/i915/display/intel_dp_mst.c -O ./drivers/gpu/drm/i915/display/intel_dp_mst.c
-fi
 dkms add .
-dkms install -m i915-sriov-dkms -v $KERNEL -k $(uname -r) --force
-dkms status
-cd /usr/src/i915-sriov-dkms-$KERNEL
-dkms status
+dkms install -m i915-sriov-dkms -v 2024.07.17 --force
 grub
 update-grub
-update-initramfs -u -k all
 echo "devices/pci0000:00/0000:00:02.0/sriov_numvfs = 3" > /etc/sysfs.conf
 #proxmox-boot-tool kernel pin $(uname -r)
-#proxmox-boot-tool kernel unpin
 }
 
 kernel() {
