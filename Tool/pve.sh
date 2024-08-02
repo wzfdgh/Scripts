@@ -282,5 +282,19 @@ lvextend -l +100%FREE -r pve/root
 echo "请在 web 删除 local-lvm 储存 并编辑 local 的内容"
 }
 
+netdata() {
+# https://learn.netdata.cloud/docs/netdata-agent/installation/linux
+echo "安装 Netdata"
+curl https://get.netdata.cloud/kickstart.sh > /tmp/netdata-kickstart.sh && sh /tmp/netdata-kickstart.sh --disable-telemetry
+
+cat << EOF
+将以下文本使用 /etc/netdata/edit-config 写入 /etc/netdata/netdata.conf
+
+[web]
+    bind to = 0.0.0.0=dashboard|registry|badges|management|streaming|netdata.conf^SSL=force
+    ssl key = /etc/netdata/ssl/
+    ssl certificate = /etc/netdata/ssl
+EOF
+}
 web
 ct
