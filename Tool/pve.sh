@@ -17,7 +17,7 @@ fi
 
 echo "Web管理页增加数据"
 as
-apt update && apt upgrade -y && apt install linux-cpupower lm-sensors -y
+apt update && apt install linux-cpupower lm-sensors -y
 if [ `grep "cpu_tdp" $pm |wc -l` -eq 0 ];then
   cat << EOF > /tmp/js
 	{
@@ -67,7 +67,7 @@ EOF
   echo "添加开机启动项"
   rclocal
   if [ `grep "chmod +s /usr/sbin/turbostat" $rc |wc -l` -eq 0 ];then
-    l=`sed -n "/exit 0/=" $rc`
+    l=`sed -n "/^exit 0/=" $rc`
     sed -i ''$l'i chmod +s /usr/sbin/turbostat' $rc
   else
     echo "无需添加"
@@ -129,9 +129,8 @@ apt install apcupsd
 }
 
 nupst() {
-echo "配置 Network UPS Tool
+echo "配置 Network UPS Tool"
 apt install nut nut-cgi -y
-
 }
 
 ct() {
@@ -149,8 +148,8 @@ echo "更改grub"
 if [ `grep 'GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_guc=3 i915.max_vfs=7 intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub |wc -l` -eq 0 ];then
   l=`sed -n "/GRUB_CMDLINE_LINUX_DEFAULT/=" /etc/default/grub`
   sed -i ''$l'c GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt i915.enable_guc=3 i915.max_vfs=7 intel_pstate=passive cpufreq.default_governor=conservative"' /etc/default/grub
-  #https://www.intel.cn/content/www/cn/zh/support/articles/000093216/graphics/processor-graphics.html
-  #i915.enable_gvt=1
+  # https://www.intel.cn/content/www/cn/zh/support/articles/000093216/graphics/processor-graphics.html
+  # i915.enable_gvt=1
 else
   echo "无需更改"
 fi
@@ -296,5 +295,30 @@ cat << EOF
     ssl certificate = /etc/netdata/ssl
 EOF
 }
+
+eth() {
+echo "配置网卡 offload"
+apt update && apt install ethtool -y
+rclocal
+if [ `grep "ethtool -K" $rc |wc -l` -eq 0 ];then
+  l=`sed -n "/^exit 0/=" $rc`
+  sed -i ''$l'd' $rc
+  cat << EOF >> /etc/rc.local
+for dev in \$(ls /sys/class/net |grep '^(eno\|ens\|enp\|eth)'); do
+echo "\$dev"
+ethtool -K \$dev tso off
+done
+
+exit 0
+EOF
+  for dev in $(ls /sys/class/net |grep '^(eno\|ens\|enp\|eth)'); do
+  echo "$dev"
+  ethtool -K $dev tso off
+  done
+else
+  echo "无需配置"
+fi
+}
+
 web
 ct
