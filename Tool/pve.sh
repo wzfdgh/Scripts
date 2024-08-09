@@ -155,20 +155,30 @@ else
 fi
 }
 
-vgpu() {
-apt update && apt install git build-* dkms sysfsutils -y
-rm -rf /var/lib/dkms/i915-sriov-dkms*
-rm -rf /usr/src/i915-sriov-dkms*
-rm -rf ~/i915-sriov-dkms
+ivgpu() {
+apt update && apt install git build-* dkms sysfsutils proxmox-headers-$(uname -r) -y
 cd ~
 git clone https://github.com/strongtz/i915-sriov-dkms.git
 cd ~/i915-sriov-dkms
 dkms add .
-dkms install -m i915-sriov-dkms -v 2024.07.17 --force
+dkms install -m i915-sriov-dkms -v $(cat VERSION) --force
 grub
 update-grub
 echo "devices/pci0000:00/0000:00:02.0/sriov_numvfs = 3" > /etc/sysfs.conf
 #proxmox-boot-tool kernel pin $(uname -r)
+apt purge proxmox-headers-$(uname -r)
+}
+
+uvgpu(){
+apt update && apt install proxmox-headers-$(uname -r) -y
+rm -rf /var/lib/dkms/i915-sriov-dkms* rm -rf /usr/src/i915-sriov-dkms* && rm -rf ~/i915-sriov-dkms
+cd ~
+git clone https://github.com/strongtz/i915-sriov-dkms.git
+cd ~/i915-sriov-dkms
+dkms add .
+dkms install -m i915-sriov-dkms -v $(cat VERSION) --force
+update-grub
+apt purge proxmox-headers-$(uname -r)
 }
 
 kernel() {
